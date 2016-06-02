@@ -1,0 +1,64 @@
+# Include java runtime classes 
+# 需要混淆的jar包所依赖的jar包
+-libraryjars  <java.home>/lib/rt.jar
+-verbose
+
+# Keep filenames and line numbers
+# -keepattributes SourceFile, LineNumberTable
+
+# 因为项目中使用到了jpa的Annotation注解，需要保留这个属性
+-keepattributes *Annotation*
+
+# Disable certain proguard optimizations which remove stackframes (same as Android defaults)
+-optimizations !method/inlining/*
+
+#
+#-keep public class * {
+#    public protected *;
+#}
+
+-keepclassmembernames class * {
+    java.lang.Class class$(java.lang.String);
+    java.lang.Class class$(java.lang.String, boolean);
+}
+## 保留了含有native方法的类
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+## 保留枚举类型中的values和valueOf静态方法
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+##
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private static final java.io.ObjectStreamField[] serialPersistentFields;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
+}
+
+# 混淆
+#开启侵入性重载混淆。多个字段及方法允许同名，只要它们的参数及返回值类型不同。该选项可使处理后的代码更小
+-overloadaggressively 
+-defaultpackage ''
+-allowaccessmodification 
+-dontoptimize 
+
+# -dontwarn org.apache.**
+#-keep class org.apache.** { *;}
+
+# web 层的 action 对外接口不混淆
+-keep class com.zhjl.carelife.action.** {*;}
+-keep class com.zhjl.carelife.listener.** {*;}
+-keep class com.zhjl.carelife.filter.** {*;}
+-keep class com.zhjl.carelife.model.** {*;}
+-keep class com.zhjl.carelife.dao.** {*;}
+-keep class com.zhjl.carelife.persist.** {*;}
+
+
+
+

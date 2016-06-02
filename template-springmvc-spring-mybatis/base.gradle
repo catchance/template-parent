@@ -1,0 +1,16 @@
+//基础的构件脚本
+//org.mybatis.generator.ant.GeneratorAntTask
+
+
+//task有无action的区别:
+//如果task没有加<<则这个任务在脚本初始化initialization阶段（即无论执行啥task都被执行)被执行
+//如果加了<<则在gradle actionTask后才执行。因为没有加<<则闭包在task函数返回前会执行
+//而加了<<则变成调用actionTask.doLast()，所以会等到gradle actionTask时执行。
+//有Action的task
+task actionTask << {
+    println 'I am actionTask'
+}
+//无Action的task
+task noActionTask {
+    println 'I am noActionTask'
+}

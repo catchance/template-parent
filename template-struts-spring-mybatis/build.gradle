@@ -1,0 +1,383 @@
+group 'org.catchance'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'signing'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
+apply plugin: 'findbugs'
+apply plugin: "jacoco"
+apply plugin: "application"
+
+//web项目
+apply plugin: "war"
+apply plugin: "jetty"
+
+mainClassName = "org.hello.HelloWorld"
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+println project.name
+
+configurations {
+    driver
+}
+
+// java编译的时候缺省状态下会因为中文字符而失败
+[compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
+
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+/*判断某个对象存不存在一个属性*/
+if(project.metaClass.hasProperty(project,'profile')){
+    /*如果有传递过来开发环境的话选择传递过来的值，否则的话默认开发环境为development*/
+    ext.profile=project['profile']
+}else{
+    ext.profile='development'
+}
+
+ext {
+    logbackVersion='1.1.3'
+    junitVersion='4.11'
+    testngVersion='6.9.9'
+    springVersion='4.2.2.RELEASE'
+    groovyVersion='2.4.4'
+    strutsVersion='2.3.16.3'
+    commonsCodecVersion='1.10'
+    commonsLangVersion='2.6'
+    mysqlConnectorVersion='5.1.34'
+    c3p0Version='0.9.1.2'
+}
+
+def loadGroovy(){
+    def configFile = file('config.groovy')
+    new ConfigSlurper(profile).parse(configFile.toURL()).toProperties()
+}
+
+ext.configMap=loadGroovy()
+//println project.configMap.getProperty('jdbc.url')
+//println configMap.getProperty('jdbc.user')
+
+//设置脚本的运行环境
+buildscript {
+    //支持java 依赖库管理（maven/ivy）,用于项目的依赖。
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        //依赖包的定义。支持maven/ivy，远程，本地库，也支持单文件
+        //唯一不同之处是在buildscript代码块中你可以对dependencies使用classpath声明。
+//        classpath "mysql:mysql-connector-java:5.1.34"
+    }
+}
+
+try{
+//    def dd = Class.forName("com.mysql.jdbc.Driver").newInstance()
+//    println dd.class
+}catch(Exception e){
+    e.printStackTrace()
+}
+
+//初始化数据库脚本语句
+//groovy.sql.Sql initSql =
+//        groovy.sql.Sql.newInstance(configMap.getProperty('jdbc.url'),
+//                configMap.getProperty('jdbc.user'),
+//                configMap.getProperty('jdbc.password'),
+//                configMap.getProperty('jdbc.driver'))
+//try {
+//    new File(script).text.split(";").each {
+//        logger.info it
+//        initSql.execute(it)
+//    }
+//} catch (Exception e) {
+//    e.printStackTrace()
+//}
+
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    compile(
+            "ch.qos.logback:logback-classic:$logbackVersion",
+//            "org.codehaus.groovy:groovy:$groovyVersion",
+            "org.codehaus.groovy:groovy-all:$groovyVersion",
+            "org.springframework:spring-aspects:$springVersion",
+            "org.springframework:spring-context:$springVersion",
+            "org.springframework:spring-core:$springVersion",
+            "org.springframework:spring-web:$springVersion",
+            "org.springframework:spring-tx:$springVersion",
+            "org.springframework:spring-beans:$springVersion",
+            "org.springframework:spring-webmvc:$springVersion",
+
+            "c3p0:c3p0:$c3p0Version",
+
+            "mysql:mysql-connector-java:$mysqlConnectorVersion",
+            "org.apache.struts:struts2-core:$strutsVersion",
+            "org.apache.struts:struts2-spring-plugin:$strutsVersion",
+            "org.apache.struts:struts2-json-plugin:$strutsVersion",
+            "commons-codec:commons-codec:$commonsCodecVersion",
+            "commons-lang:commons-lang:$commonsLangVersion"
+
+    )
+
+    driver "mysql:mysql-connector-java:$mysqlConnectorVersion"
+
+    providedCompile(
+            "javax.servlet:javax.servlet-api:3.1.0",
+            "javax.servlet.jsp:jsp-api:2.2.1-b03",
+            "javax.servlet.jsp.jstl:javax.servlet.jsp.jstl-api:1.2.1"
+    )
+//    runtime "org.codehaus.groovy:groovy:1.8.6"
+
+    // 依赖mave中不存在的jar
+//    runtime files('libs/a.jar', 'libs/b.jar')
+//    runtime fileTree(dir: 'libs', include: '*.jar')
+    ext.jarTree = fileTree(dir: 'libs', include: '**/*.jar')
+    ext.rootProjectLibs = new File(rootProject.rootDir, 'libs').getAbsolutePath()
+    ext.jarTree += fileTree(dir: rootProjectLibs, include: '**/*.jar')
+    compile jarTree
+
+    testCompile group: 'junit', name: 'junit', version: "$junitVersion"
+    testCompile(
+            "org.testng:testng:$testngVersion",
+            "org.springframework:spring-test:$springVersion"
+    )
+}
+
+signing {
+//    required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
+//    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            mavenLocal()
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        }
+    }
+}
+
+jar{
+    manifest{
+        attributes("Implementation-Title": "Gradle",
+                "Implementation-Version": version)
+    }
+}
+
+//默认会执行JUnit的case
+test{
+    //执行TestNG测试
+    useTestNG(){
+
+//        includeGroups 'slow'   //分组测试
+//        excludeGroups 'fast'
+//        suites(file('src/test/resources/org/hello/testng.xml'));   //
+    }
+    beforeTest { descriptor ->
+        logger.lifecycle("Running test: " + descriptor)
+    }
+    onOutput { descriptor, event ->
+        logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+    }
+    //reports.html.enabled = false
+    filter{
+        //include specific method in any of the tests
+//        includeTestsMatching "*UiCheck"
+        //include all tests from package
+//        includeTestsMatching "org.gradle.internal.*"
+        //include all integration tests
+//        includeTestsMatching "*IntegTest"
+    }
+//    systemProperty "prop" "value"
+    include '**/*Test.class'    //分class文件测试
+    exclude '**/*IntegrationTest.class'
+
+    jacoco {
+        append = false
+        destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
+        classDumpFile = file("$buildDir/jacoco/classpathdumps")
+        excludes = ["org.*"]
+    }
+}
+
+checkstyle {
+    configFile = file("config/checkstyle/checkstyle.xml")
+
+}
+checkstyle {
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+}
+findbugs {
+//    toolVersion = "2.0.3"
+    sourceSets = [sourceSets.main]
+    ignoreFailures = true
+    reportsDir = file("$project.buildDir/findbugsReports")
+    effort = "max"
+    reportLevel = "high"
+    visitors = ["FindSqlInjection", "SwitchFallthrough"]
+    omitVisitors = ["FindNonShortCircuit"]
+//    includeFilter = file("$rootProject.projectDir/config/findbugs/includeFilter.xml")
+//    excludeFilter = file("$rootProject.projectDir/config/findbugs/excludeFilter.xml")
+//    excludeBugsFilter = file("$rootProject.projectDir/config/findbugs/excludeBugsFilter.xml")
+}
+
+pmd {
+    ruleSets = ["basic"]
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+}
+
+jacoco {
+    applyTo run
+}
+
+task applicationCodeCoverageReport(type:JacocoReport){
+    executionData run
+    sourceSets sourceSets.main
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+//        html.enabled true
+        csv.enabled false
+        html.destination "${buildDir}/jacocoHtml"
+    }
+//    sourceSets sourceSets.main
+
+}
+
+tasks.withType(JavaCompile){
+    options.encoding = "UTF-8"
+}
+
+// 显示当前项目下所有用于 compile 的 jar.
+task listJars << {
+    configurations.compile.each { File file -> println file.name }
+}
+
+//创建项目的目录结构
+task "createJavaProject" << {
+    sourceSets*.java.srcDirs*.each{it.mkdirs()}
+    sourceSets*.resources.srcDirs*.each{it.mkdirs()}
+}
+
+//    创建webProject目录结构
+task createWebProject(dependsOn: 'createJavaProject') << {
+    def webAppDir = file("$webAppDirName")
+    webAppDir.mkdirs()
+}
+
+//将项目runtime时需要的jar的复制到项目路径下面的libs文件夹下面
+task copyJars(type:Copy){
+    from configurations.runtime
+    into "$buildDir/copylibs" // 目标位置
+}
+
+//参见Part 2， 为项目生成**.jar/**-javadoc.jar/**-sources.jar
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives jar
+    archives javadocJar
+    archives sourcesJar
+}
+
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+
+        mavenCustom(MavenPublication) {
+            pom.withXml {
+                asNode().appendNode('description',
+                        'A demonstration of maven POM customization')
+            }
+        }
+
+    }
+}
+publishing {
+    repositories {
+        maven {
+            // change to point to your repo, e.g. http://my.org/repo
+            url "$buildDir/repo"
+        }
+    }
+}
+
+//web项目专用
+task jarWithoutResources(type: Jar) {
+    baseName project.name
+    from("$buildDir/classes/main")
+}
+
+war{
+    dependsOn jarWithoutResources
+    from("$projectDir/src/main/resources") {
+        include "*.properties"
+        into("WEB-INF/classes")
+    }
+    classpath=classpath - sourceSets.main.output
+    classpath fileTree(dir:libsDir, include:"${project.name}-${version}.jar")
+}
+
+//jettyRun 配置
+jettyRun{
+    httpPort = 8080
+    stopPort = 8011
+    webAppSourceDirectory file("$projectDir/src/main/webapp")
+    contextPath project.name
+    scanIntervalSeconds 10
+    reload "automatic"
+}
+
+
+/*导入mysql的驱动程序*/
+task loadMySqlDriver << {
+    description='load Mysql Driver Class by ClassLoader'
+    URLClassLoader loader = GroovyObject.class.classLoader
+    configurations.driver.each { File file ->
+        loader.addURL(file.toURL())
+    }
+}
+
+/*获取数据库连接*/
+groovy.sql.Sql getSql() {
+    def props = [user:configMap.getProperty('jdbc.user'), password:configMap.getProperty('jdbc.password'),
+                 allowMultiQueries: 'true'] as Properties
+    def url =configMap.getProperty('jdbc.url')
+    def driver =configMap.getProperty('jdbc.driver')
+    /*url 链接到mysql 截取到后面的数据库*/
+    url=url.substring(0,url.lastIndexOf('/'))
+    println url
+    groovy.sql.Sql.newInstance(url, props, driver)
+}
+
+/*初始化项目的数据文件*/
+task initDB(dependsOn: loadMySqlDriver) << {
+    description='get file text from config/sql/init.sql and import to mysql'
+    groovy.sql.Sql sql = getSql()
+    def text =  file("config/sql/init.sql").text
+    sql.execute(text)
+}

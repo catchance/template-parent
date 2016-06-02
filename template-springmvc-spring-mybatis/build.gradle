@@ -1,0 +1,607 @@
+println 'This is executed during the configuration phase.'
+
+group 'org.catchance'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'signing'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
+apply plugin: 'findbugs'
+apply plugin: "jacoco"
+apply plugin: "application"
+/*初始化数据库的插件*/
+apply plugin: 'flyway'
+
+//web项目
+apply plugin: "war"
+//apply plugin: "jetty"
+apply plugin: "org.akhikhl.gretty"
+apply plugin: 'com.bmuschko.cargo'
+//apply plugin: 'com.bmuschko.cargo-base'
+
+//引用其他的构建脚本
+apply from: 'base.gradle'
+
+
+mainClassName = "org.hello.HelloWorld"
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+println project.name
+
+//在Gradle中依赖可以组合成configurations（配置），
+// 一个配置简单地说就是一系列的依赖，通俗说也就是依赖配置
+configurations {
+    driver
+    mbgenerator
+}
+
+sourceSets {
+    //srcDir实际上会将给定的文件夹添加到现有的源文件夹列表中
+    //如果要替换默认的源文件夹，您就要使用传入一个路径数组的srcDirs来代替
+//    main {
+//        java {
+//          srcDir 'src/main/java'
+//          exclude(['com/okok/cmes/base/**'])
+//          include '/org/chance/mapper/**/*.xml'
+//        }
+//        groovy{
+//            srcDirs 'src/main/groovy'
+//        }
+//        resources {
+//            srcDir 'src/main/java/org/chance/mapper'
+//            exclude 'src/main/java/org/chance/**/*.java'
+//        }
+//    }
+}
+
+// java编译的时候缺省状态下会因为中文字符而失败
+[compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
+
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+/*判断某个对象存不存在一个属性*/
+//println ">>+"+profile
+if(project.metaClass.hasProperty(project,'profile')){
+    /*如果有传递过来开发环境的话选择传递过来的值，否则的话默认开发环境为development*/
+    ext.profile=project['profile']
+}else{
+    ext.profile='development'
+}
+
+ext {
+    logbackVersion='1.1.3'
+    log4jVersion='1.2.17'
+    junitVersion='4.11'
+    testngVersion='6.9.9'
+    springVersion='4.2.2.RELEASE'
+    groovyVersion='2.4.4'
+    commonsCodecVersion='1.10'
+    commonsLangVersion='2.6'
+    mysqlConnectorVersion='5.1.34'
+    c3p0Version='0.9.1.2'
+    mybatisVersion='3.2.8'
+    mybatisSpringVersion='1.1.1'
+}
+
+def loadGroovy(){
+    def configFile = file('config.groovy')
+    new ConfigSlurper(profile).parse(configFile.toURL()).toProperties()
+}
+
+ext.configMap=loadGroovy()
+//println project.configMap.getProperty('jdbc.url')
+//println configMap.getProperty('jdbc.user')
+
+//设置脚本的运行环境
+buildscript {
+    //支持java 依赖库管理（maven/ivy）,用于项目的依赖。
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        //依赖包的定义。支持maven/ivy，远程，本地库，也支持单文件
+        //唯一不同之处是在buildscript代码块中你可以对dependencies使用classpath声明。
+//        classpath "mysql:mysql-connector-java:5.1.34"
+        classpath "org.flywaydb:flyway-gradle-plugin:3.0"
+        classpath 'mysql:mysql-connector-java:5.1.34'
+        //mybatis 自动生成jar配置和领域类的工具
+        classpath 'org.mybatis.generator:mybatis-generator-core:1.3.2'
+        classpath 'org.akhikhl.gretty:gretty:+'
+        classpath 'com.bmuschko:gradle-cargo-plugin:2.2.2'
+        classpath 'net.sf.proguard:proguard-gradle:5.2.1'
+
+    }
+}
+
+try{
+//    def dd = Class.forName("com.mysql.jdbc.Driver").newInstance()
+//    println dd.class
+}catch(Exception e){
+    e.printStackTrace()
+}
+
+//初始化数据库脚本语句
+//groovy.sql.Sql initSql =
+//        groovy.sql.Sql.newInstance(configMap.getProperty('jdbc.url'),
+//                configMap.getProperty('jdbc.user'),
+//                configMap.getProperty('jdbc.password'),
+//                configMap.getProperty('jdbc.driver'))
+//try {
+//    new File(script).text.split(";").each {
+//        logger.info it
+//        initSql.execute(it)
+//    }
+//} catch (Exception e) {
+//    e.printStackTrace()
+//}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+}
+
+dependencies {
+    compile(
+//            "log4j:log4j:$log4jVersion",
+            "ch.qos.logback:logback-classic:$logbackVersion",
+            "org.codehaus.groovy:groovy-all:$groovyVersion",
+            "org.springframework:spring-aspects:$springVersion",
+            "org.springframework:spring-context:$springVersion",
+            "org.springframework:spring-core:$springVersion",
+            "org.springframework:spring-web:$springVersion",
+            "org.springframework:spring-webmvc:$springVersion",
+            "org.springframework:spring-tx:$springVersion",
+            "org.springframework:spring-beans:$springVersion",
+            "org.mybatis:mybatis:$mybatisVersion",
+            "org.mybatis:mybatis-spring:$mybatisSpringVersion",
+            "c3p0:c3p0:$c3p0Version",
+
+            'org.mybatis.generator:mybatis-generator-core:1.3.2',
+
+            "mysql:mysql-connector-java:$mysqlConnectorVersion",
+            "commons-codec:commons-codec:$commonsCodecVersion",
+            "commons-lang:commons-lang:$commonsLangVersion"
+
+
+    )
+
+    providedCompile(
+            "javax.servlet:javax.servlet-api:3.1.0",
+            "javax.servlet.jsp:jsp-api:2.2.1-b03",
+            "javax.servlet.jsp.jstl:javax.servlet.jsp.jstl-api:1.2.1"
+    )
+
+    driver "mysql:mysql-connector-java:$mysqlConnectorVersion"
+
+    mbgenerator(
+            "org.mybatis.generator:mybatis-generator-core:1.3.2",
+            "mysql:mysql-connector-java:$mysqlConnectorVersion"
+    )
+
+//    runtime "org.codehaus.groovy:groovy:1.8.6"
+
+    // 依赖mave中不存在的jar
+//    runtime files('libs/a.jar', 'libs/b.jar')
+//    runtime fileTree(dir: 'libs', include: '*.jar')
+    ext.jarTree = fileTree(dir: 'libs', include: '**/*.jar')
+    ext.rootProjectLibs = new File(rootProject.rootDir, 'libs').getAbsolutePath()
+    ext.jarTree += fileTree(dir: rootProjectLibs, include: '**/*.jar')
+    compile jarTree
+
+    testCompile group: 'junit', name: 'junit', version: "$junitVersion"
+    testCompile(
+            "org.testng:testng:$testngVersion",
+            "org.springframework:spring-test:$springVersion"
+    )
+}
+
+signing {
+//    required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
+//    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            mavenLocal()
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        }
+    }
+}
+
+jar{
+    manifest{
+        attributes("Implementation-Title": "Gradle",
+                "Implementation-Version": version)
+    }
+//    from('src/main/java'){
+//        include '/**/*.xml'
+//    }
+}
+
+//默认会执行JUnit的case
+test{
+    //执行TestNG测试
+    useTestNG(){
+
+//        includeGroups 'slow'   //分组测试
+//        excludeGroups 'fast'
+//        suites(file('src/test/resources/org/hello/testng.xml'));   //
+    }
+    beforeTest { descriptor ->
+        logger.lifecycle("Running test: " + descriptor)
+    }
+    onOutput { descriptor, event ->
+        logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+    }
+    //reports.html.enabled = false
+    filter{
+        //include specific method in any of the tests
+//        includeTestsMatching "*UiCheck"
+        //include all tests from package
+//        includeTestsMatching "org.gradle.internal.*"
+        //include all integration tests
+//        includeTestsMatching "*IntegTest"
+    }
+//    systemProperty "prop" "value"
+    include '**/*Test.class'    //分class文件测试
+    exclude '**/*IntegrationTest.class'
+
+    jacoco {
+        append = false
+        destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
+        classDumpFile = file("$buildDir/jacoco/classpathdumps")
+        excludes = ["org.*"]
+    }
+}
+
+checkstyle {
+    configFile = file("config/checkstyle/checkstyle.xml")
+
+}
+checkstyle {
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+}
+findbugs {
+//    toolVersion = "2.0.3"
+    sourceSets = [sourceSets.main]
+    ignoreFailures = true
+    reportsDir = file("$project.buildDir/findbugsReports")
+    effort = "max"
+    reportLevel = "high"
+    visitors = ["FindSqlInjection", "SwitchFallthrough"]
+    omitVisitors = ["FindNonShortCircuit"]
+//    includeFilter = file("$rootProject.projectDir/config/findbugs/includeFilter.xml")
+//    excludeFilter = file("$rootProject.projectDir/config/findbugs/excludeFilter.xml")
+//    excludeBugsFilter = file("$rootProject.projectDir/config/findbugs/excludeBugsFilter.xml")
+}
+
+pmd {
+    ruleSets = ["basic"]
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+}
+
+jacoco {
+    applyTo run
+}
+
+task applicationCodeCoverageReport(type:JacocoReport){
+    executionData run
+    sourceSets sourceSets.main
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+//        html.enabled true
+        csv.enabled false
+        html.destination "${buildDir}/jacocoHtml"
+    }
+//    sourceSets sourceSets.main
+
+}
+
+tasks.withType(JavaCompile){
+    options.encoding = "UTF-8"
+}
+
+// 显示当前项目下所有用于 compile 的 jar.
+// 这是快捷写法，用<<替换doLast
+task listJars << {
+    configurations.compile.each { File file -> println file.name }
+}
+
+//创建项目的目录结构
+task "createJavaProject" << {
+    sourceSets*.java.srcDirs*.each{it.mkdirs()}
+    sourceSets*.groovy.srcDirs*.each{it.mkdirs()}
+    sourceSets*.resources.srcDirs*.each{it.mkdirs()}
+}
+
+//    创建webProject目录结构
+task createWebProject(dependsOn: 'createJavaProject') << {
+    def webAppDir = file("$webAppDirName")
+    webAppDir.mkdirs()
+}
+
+//将项目runtime时需要的jar的复制到项目路径下面的libs文件夹下面
+//代码中（type：Copy）就是“显式地声明Task的类型”
+// helloworld没有就是默认得DefaultTask类型
+task copyJars(type:Copy){
+    from configurations.runtime
+    into "$buildDir/copylibs" // 目标位置
+}
+
+task copyMybatisMapper(type:Copy) {
+    println "copyMybatisMapper!!"
+    from 'src/main/java/org/chance/mapper'
+    into 'build/classes/main/org/chance/mapper'
+    exclude '**/*.java'
+}
+
+processResources {
+    dependsOn copyMybatisMapper
+//    from('src/main/java/org/chance/mapper'){
+//        include '/**/*.xml'
+//    }
+}
+
+//task grettyAppStart(type:org.akhikhl.gretty.AppStartTask){
+//    dependsOn copyMybatisMapper
+//}
+
+//appStart.dependsOn copyMybatisMapper
+
+//参见Part 2， 为项目生成**.jar/**-javadoc.jar/**-sources.jar
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+//task testSql(){
+//    def sql = groovy.sql.Sql.newInstance(
+//            'jdbc:mysql://127.0.0.1:3306/carelife',
+//            'root', 'root', 'com.mysql.jdbc.Driver')
+//    sql.eachRow("select * from menu"){row ->
+//        println row.id
+//        println row.path
+//    }
+//}
+
+artifacts {
+    archives jar
+    archives javadocJar
+    archives sourcesJar
+}
+
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+
+        mavenCustom(MavenPublication) {
+            pom.withXml {
+                asNode().appendNode('description',
+                        'A demonstration of maven POM customization')
+            }
+        }
+
+    }
+}
+publishing {
+    repositories {
+        maven {
+            // change to point to your repo, e.g. http://my.org/repo
+            url "$buildDir/repo"
+        }
+    }
+}
+
+//web项目专用
+task jarWithoutResources(type: Jar) {
+    dependsOn copyMybatisMapper
+    baseName project.name
+    from("$buildDir/classes/main")
+}
+
+war{
+//    dependsOn jarWithoutResources
+    from("$projectDir/src/main/resources") {
+//      include "*.properties"
+        include "**"
+        into("WEB-INF/classes")
+    }
+    classpath=classpath - sourceSets.main.output
+    classpath fileTree(dir:libsDir, include:"${project.name}-${version}.jar")
+}
+
+javadoc {
+    options{
+        encoding "UTF-8"
+        charSet "UTF-8"
+        author true
+        version true
+        links "http://docs.oracle.com/javase/7/docs/api"
+//		title PROJ_ARTIFACTID
+    }
+}
+
+//jettyRun 配置
+//[jettyRun, jettyRunWar]*.with {
+//    webDefaultXml = file("${rootDir}/config/webdefault.xml")
+//}
+//jettyRun{
+//    reload = "automatic"
+//    scanIntervalSeconds = 1
+//    httpPort = 8080
+//    stopPort = 8011
+//    stopKey = 'stop'
+////  webAppSourceDirectory file("$projectDir/src/main/webapp")
+//    contextPath = project.name
+//}
+//task 'jettyDebug' << {
+//    org.gradle.tooling.ProjectConnection conn =
+//            org.gradle.tooling.GradleConnector.newConnector().forProjectDirectory(new File("${rootProject.projectDir}")).connect()
+//    try {
+//        org.gradle.tooling.model.build.BuildEnvironment env = conn.getModel(org.gradle.tooling.model.build.BuildEnvironment.class)
+//        org.gradle.tooling.BuildLauncher build = conn.newBuild()
+//        build.forTasks("jettyRun")
+//        build.withArguments("--no-search-upward","-i","--project-dir","${rootProject.projectDir}")
+//        // Enable debug via jvm arguments and append JVM arguments of the currently running vm (except -D).
+//        build.setJvmArguments("-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005", *env.java.jvmArguments)
+//        // Run tomcatRun in the new JVM with debug parameters
+////      OutputStream os = System.out;
+////      ByteArrayOutputStream outputStream = new ByteArrayOutputStream(os);
+//        build.setStandardOutput(System.out);
+//        build.setStandardError(System.out);
+//        build.run()
+//    }finally{
+//        conn.close()
+//    }
+//}
+
+/*配置web部署项目的第三方插件*/
+gretty{
+    port=8080
+    contextPath ="/${project.name}"
+    servletContainer = 'jetty9'
+    scanInterval = 1
+    loggingLevel = "INFO"
+    managedClassReload=true
+//    logbackConfigFile ="$projectDir/logback.groovy"
+//    serverConfigFile="config/jetty-copy.xml"
+}
+
+//task 'jettyDebug' << {
+//    org.gradle.tooling.ProjectConnection conn =
+//            org.gradle.tooling.GradleConnector.newConnector().forProjectDirectory(new File("${rootProject.projectDir}")).connect()
+//    try {
+//        org.gradle.tooling.model.build.BuildEnvironment env = conn.getModel(org.gradle.tooling.model.build.BuildEnvironment.class)
+//        org.gradle.tooling.BuildLauncher build = conn.newBuild()
+//        build.forTasks("jettyRun")
+//        build.withArguments("--no-search-upward","-i","--project-dir","${rootProject.projectDir}")
+//        // Enable debug via jvm arguments and append JVM arguments of the currently running vm (except -D).
+//        build.setJvmArguments("-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005", *env.java.jvmArguments)
+//        // Run tomcatRun in the new JVM with debug parameters
+//        build.run()
+//    }finally{
+//        conn.close()
+//    }
+//}
+
+cargo {
+    containerId = 'tomcat7x'
+
+    port = 8080
+
+    deployable {
+ //       file = file('/home/foo/bar/web-services.war')
+        context = '/test'
+    }
+
+    local {
+        installer {
+            installUrl = 'http://apache.osuosl.org/tomcat/tomcat-7/v7.0.67/bin/apache-tomcat-7.0.67.zip'
+            downloadDir = file("$buildDir/download")
+            extractDir = file("$buildDir/extract")
+        }
+    }
+}
+
+/*导入mysql的驱动程序*/
+task loadMySqlDriver << {
+    description='load Mysql Driver Class by ClassLoader'
+    URLClassLoader loader = GroovyObject.class.classLoader
+    configurations.driver.each { File file ->
+        loader.addURL(file.toURL())
+    }
+}
+
+/*获取数据库连接*/
+groovy.sql.Sql getSql() {
+    def props = [user:configMap.getProperty('jdbc.user'), password:configMap.getProperty('jdbc.password'),
+                 allowMultiQueries: 'true'] as Properties
+    def url =configMap.getProperty('jdbc.url')
+    def driver =configMap.getProperty('jdbc.driver')
+    /*url 链接到mysql 截取到后面的数据库*/
+    url=url.substring(0,url.lastIndexOf('/'))
+    println url
+    groovy.sql.Sql.newInstance(url, props, driver)
+}
+
+/*初始化项目的数据文件*/
+task initDB(dependsOn: loadMySqlDriver) << {
+    description='get file text from config/sql/init.sql and import to mysql'
+    groovy.sql.Sql sql = getSql()
+    def text =  file("config/sql/init.sql").text
+    sql.execute(text)
+}
+
+/*初始化数据库的插件*/
+flyway {
+    driver = 'com.mysql.jdbc.Driver'
+    url = 'jdbc:mysql://localhost:3306/chance'
+    user = 'root'
+    password = '123456'
+    locations = ['filesystem:src/main/resources/db/migration/mysql']
+    sqlMigrationPrefix = 'MySQL-'
+}
+
+/* 生成mybatis的mapper和domain配置文件 */
+task mbgenerator << {
+    ant.taskdef(name:'mbgenerator',
+        classname:'org.mybatis.generator.ant.GeneratorAntTask',
+        classpath:configurations.mbgenerator.asPath){
+            resource='config/mybatisgenerator/init.properties'
+    }
+    ant.mbgenerator(overwrite:"true",
+            configfile:"config/mybatisgenerator/generatorConfig.xml",
+            verbose:"false"){
+    }
+}
+
+//proguard 混淆配置
+task proguard(type: proguard.gradle.ProGuardTask) {
+    /* create 存放文件需要的文件夹 */
+    def cacheFile = file("$buildDir/proguard")
+    cacheFile.mkdirs()
+    configuration 'config/proguard/proguard.txt'
+    //需要混淆的jar包所依赖的jar包
+    obfuscationdictionary 'config/proguard/compact.txt'
+    classobfuscationdictionary 'config/proguard/shakespeare.txt'
+//	packageobfuscationdictionary
+    libraryjars configurations.runtime
+    injars "$buildDir/libs/carelife-1.0.jar"
+    outjars "$buildDir/libs/carelife-1.0.pg.jar"
+    //列出了未被混淆的类和成员
+    printseeds "$buildDir/proguard/seeds.txt"
+    //列出了原始的类，方法和字段名与混淆后代码间的映射。这个文件很重要
+    printmapping "$buildDir/proguard/mapping.txt"
+    //列出了从.apk中删除的代码
+    printusage  "$buildDir/proguard/usage.txt"
+    printconfiguration "$buildDir/proguard/config.txt"
+    //描述文件中所有原始类文件间的内部结构
+    dump "$buildDir/proguard/dump.txt"
+}
+
+//导入ant任务的方法
+//ant.importBuild 'build.xml'

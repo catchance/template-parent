@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suite name="doctorng">
+    <!--enabled="true"让测试生效，可根据情况开启或关闭某些测试-->
+    <test name="test" enabled="true">
+        <!--指定参数-->
+        <parameter name="accesskey" value="f0af8e412cef7e5058beeb6df2012e1e"/>
+        <!--指定测试包，注意加 .* -->
+        <packages>
+            <package name="org.hello.*"/>
+        </packages>
+        <!--指定测试类-->
+        <classes>
+            <class name="org.hello.TestNGTest"/>
+            <!--过滤测试类的方法-->
+            <class name="org.hello.TestNG1Test">
+                <methods>
+                    <include name="aFastTest1" />
+                </methods>
+            </class>
+        </classes>
+        <!--指定测试分组-->
+
+        <groups>
+            <run>
+                <!--包含-->
+                <include name="fast"/>
+                <!--排除-->
+                <exclude name="slow"/>
+            </run>
+        </groups>
+
+    </test>
+</suite>

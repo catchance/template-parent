@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+        PUBLIC "-//ibatis.apache.org//DTD Config 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-config.dtd">
+<configuration>
+
+    <settings>
+        <setting name="lazyLoadingEnabled" value="true"/>
+        <setting name="aggressiveLazyLoading" value="false"/>
+        <setting name="logImpl" value="SLF4J"/>
+        <setting name="cacheEnabled" value="true"/>
+    </settings>
+
+    <!-- 别名配置 -->
+    <typeAliases>
+        <typeAlias alias="userEntity" type="org.chance.domain.UserEntity"/>
+    </typeAliases>
+
+    <!--打印SQL语句的插件 -->
+    <plugins>
+        <plugin interceptor="org.chance.utils.MybatisInterceptor">
+        </plugin>
+    </plugins>
+
+
+<!--
+    <environments default="dev">
+        <environment id="dev">
+            <transactionManager type="JDBC">
+                <property name="closeConnection" value="false"/>
+                <property name="autoCommit" value="false"/>
+            </transactionManager>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/ks_rent"/>
+                <property name="username" value="ks"/>
+                <property name="password" value="ks"/>
+                <property name="driver.encoding" value="UTF8"/>
+            </dataSource>
+        </environment>
+    </environments>
+-->
+
+<!--
+    <mappers>
+        <mapper resource=""/>
+    </mappers>
+-->
+
+</configuration>

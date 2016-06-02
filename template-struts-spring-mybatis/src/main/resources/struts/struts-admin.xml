@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts  PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+        "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <package name="struts-admin" extends="struts_union_base" namespace="/admin">
+<!--
+
+        &lt;!&ndash; 拦截器的配置 &ndash;&gt;
+        <interceptors>
+            <interceptor name="authority"
+                         class="com.zhjl.carelife.base.AuthorizationInterceptor" />
+            <interceptor-stack name="auctionStack">
+                <interceptor-ref name="defaultStack" />
+                <interceptor-ref name="authority" />
+            </interceptor-stack>
+        </interceptors>
+        &lt;!&ndash; 默认拦截器的配置 &ndash;&gt;
+
+        <default-interceptor-ref name="auctionStack" />
+        &lt;!&ndash; 全局结果配置 &ndash;&gt;
+        <global-results>
+            <result name="exception">/WEB-INF/content/error.jsp</result>
+            <result name="login">/WEB-INF/content/login.jsp</result>
+            <result name="index" type="chain">index.action</result>
+            <result name="oper.suc.dialog">/WEB-INF/content/suc_dialog.jsp</result>
+            <result type="json" name="json">
+                <param name="root">
+                    msgMap
+                </param>
+            </result>
+            <result type="json" name="json_string">
+                <param name="root">
+                    jsonString
+                </param>
+            </result>
+        </global-results>
+-->
+
+    </package>
+
+</struts>

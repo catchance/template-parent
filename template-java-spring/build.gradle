@@ -1,0 +1,230 @@
+group 'org.catchance'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'signing'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
+apply plugin: 'findbugs'
+apply plugin: "jacoco"
+apply plugin: "application"
+
+mainClassName = "org.hello.HelloWorld"
+
+sourceCompatibility = 1.5
+targetCompatibility = 1.5
+
+// java编译的时候缺省状态下会因为中文字符而失败
+[compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
+
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+ext {
+    logbackVersion='1.1.3'
+    junitVersion='4.11'
+    testngVersion='6.9.9'
+    springVersion='4.2.2.RELEASE'
+    groovyVersion='2.4.5'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    compile(
+            "ch.qos.logback:logback-classic:$logbackVersion",
+            "org.springframework:spring-aspects:$springVersion",
+//            "org.codehaus.groovy:groovy:$groovyVersion",
+            "org.codehaus.groovy:groovy-all:$groovyVersion",
+            "org.springframework:spring-context:$springVersion"
+    )
+//    runtime "org.codehaus.groovy:groovy:1.8.6"
+
+    // 依赖mave中不存在的jar
+//    runtime files('libs/a.jar', 'libs/b.jar')
+//    runtime fileTree(dir: 'libs', include: '*.jar')
+    ext.jarTree = fileTree(dir: 'libs', include: '**/*.jar')
+    ext.rootProjectLibs = new File(rootProject.rootDir, 'libs').getAbsolutePath()
+    ext.jarTree += fileTree(dir: rootProjectLibs, include: '**/*.jar')
+    compile jarTree
+
+    testCompile group: 'junit', name: 'junit', version: "$junitVersion"
+    testCompile(
+            "org.testng:testng:$testngVersion",
+            "org.springframework:spring-test:$springVersion"
+    )
+}
+
+signing {
+//    required { isReleaseVersion && gradle.taskGraph.hasTask("uploadArchives") }
+//    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            mavenLocal()
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        }
+    }
+}
+
+jar{
+    manifest{
+        attributes("Implementation-Title": "Gradle",
+                "Implementation-Version": version)
+    }
+}
+
+//默认会执行JUnit的case
+test{
+    //执行TestNG测试
+    useTestNG(){
+
+//        includeGroups 'slow'   //分组测试
+//        excludeGroups 'fast'
+//        suites(file('src/test/resources/org/hello/testng.xml'));   //
+    }
+    beforeTest { descriptor ->
+        logger.lifecycle("Running test: " + descriptor)
+    }
+    onOutput { descriptor, event ->
+        logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+    }
+    //reports.html.enabled = false
+    filter{
+        //include specific method in any of the tests
+//        includeTestsMatching "*UiCheck"
+        //include all tests from package
+//        includeTestsMatching "org.gradle.internal.*"
+        //include all integration tests
+//        includeTestsMatching "*IntegTest"
+    }
+//    systemProperty "prop" "value"
+    include '**/*Test.class'    //分class文件测试
+    exclude '**/*IntegrationTest.class'
+
+    jacoco {
+        append = false
+        destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
+        classDumpFile = file("$buildDir/jacoco/classpathdumps")
+        excludes = ["org.*"]
+    }
+}
+
+checkstyle {
+    configFile = file("config/checkstyle/checkstyle.xml")
+
+}
+checkstyle {
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+}
+findbugs {
+//    toolVersion = "2.0.3"
+    sourceSets = [sourceSets.main]
+    ignoreFailures = true
+    reportsDir = file("$project.buildDir/findbugsReports")
+    effort = "max"
+    reportLevel = "high"
+    visitors = ["FindSqlInjection", "SwitchFallthrough"]
+    omitVisitors = ["FindNonShortCircuit"]
+//    includeFilter = file("$rootProject.projectDir/config/findbugs/includeFilter.xml")
+//    excludeFilter = file("$rootProject.projectDir/config/findbugs/excludeFilter.xml")
+//    excludeBugsFilter = file("$rootProject.projectDir/config/findbugs/excludeBugsFilter.xml")
+}
+
+pmd {
+    ruleSets = ["basic"]
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+}
+
+jacoco {
+    applyTo run
+}
+
+task applicationCodeCoverageReport(type:JacocoReport){
+    executionData run
+    sourceSets sourceSets.main
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+//        html.enabled true
+        csv.enabled false
+        html.destination "${buildDir}/jacocoHtml"
+    }
+//    sourceSets sourceSets.main
+
+}
+
+tasks.withType(JavaCompile){
+    options.encoding = "UTF-8"
+}
+
+// 显示当前项目下所有用于 compile 的 jar.
+task listJars << {
+    configurations.compile.each { File file -> println file.name }
+}
+
+//创建项目的目录结构
+task "create-dirs" << {
+    sourceSets*.java.srcDirs*.each{it.mkdirs()}
+    sourceSets*.resources.srcDirs*.each{it.mkdirs()}
+}
+
+//将项目runtime时需要的jar的复制到项目路径下面的libs文件夹下面
+task copyJars(type:Copy){
+    from configurations.runtime
+    into "$buildDir/copylibs" // 目标位置
+}
+
+//参见Part 2， 为项目生成**.jar/**-javadoc.jar/**-sources.jar
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives jar
+    archives javadocJar
+    archives sourcesJar
+}
+
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+
+        mavenCustom(MavenPublication) {
+            pom.withXml {
+                asNode().appendNode('description',
+                        'A demonstration of maven POM customization')
+            }
+        }
+
+    }
+}
+publishing {
+    repositories {
+        maven {
+            // change to point to your repo, e.g. http://my.org/repo
+            url "$buildDir/repo"
+        }
+    }
+}
