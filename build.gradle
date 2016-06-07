@@ -5,8 +5,35 @@ apply plugin: 'java'
 
 sourceCompatibility = 1.5
 
+allprojects {
+    apply plugin:'templates'
+}
+
+subprojects {
+    //Add common configuration here
+}
+
+project(":template-java") {
+
+}
+
+buildscript {
+    repositories {
+        maven {
+            url 'http://dl.bintray.com/cjstehno/public'
+        }
+    }
+    dependencies {
+        classpath 'gradle-templates:gradle-templates:1.5'
+    }
+}
+
 repositories {
+//  开源中国的Maven库
+//  maven{ url 'http://maven.oschina.net/content/groups/public/'}
+    jcenter()
     mavenCentral()
+
 }
 
 dependencies {

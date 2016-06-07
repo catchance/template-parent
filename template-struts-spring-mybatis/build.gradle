@@ -267,16 +267,16 @@ task listJars << {
 }
 
 //创建项目的目录结构
-task "createJavaProject" << {
-    sourceSets*.java.srcDirs*.each{it.mkdirs()}
-    sourceSets*.resources.srcDirs*.each{it.mkdirs()}
-}
+//task "createJavaProject" << {
+//    sourceSets*.java.srcDirs*.each{it.mkdirs()}
+//    sourceSets*.resources.srcDirs*.each{it.mkdirs()}
+//}
 
 //    创建webProject目录结构
-task createWebProject(dependsOn: 'createJavaProject') << {
-    def webAppDir = file("$webAppDirName")
-    webAppDir.mkdirs()
-}
+//task createWebProject(dependsOn: 'createJavaProject') << {
+//    def webAppDir = file("$webAppDirName")
+//    webAppDir.mkdirs()
+//}
 
 //将项目runtime时需要的jar的复制到项目路径下面的libs文件夹下面
 task copyJars(type:Copy){
